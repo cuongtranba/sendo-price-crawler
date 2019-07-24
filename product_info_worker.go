@@ -6,15 +6,16 @@ import (
 	"net/http"
 	"time"
 
+	jsonparser "github.com/buger/jsonparser"
 	log "github.com/sirupsen/logrus"
 )
 
-type category struct {
+type Category struct {
 	ID      string `json:"id"`
 	URLPath string `json:"url_path"`
 }
 
-type product struct {
+type Product struct {
 	ID               string `json:"id"`
 	ProductID        string `json:"product_id"`
 	UID              string `json:"uid"`
@@ -32,48 +33,58 @@ type ProductInfoWorker struct {
 }
 
 // RunJob get product info from link
-func (pw *ProductInfoWorker) RunJob(job <-chan string, quit <-chan int, reportSignal chan<- Signal) {
+func (pw *ProductInfoWorker) RunJob(job <-chan string, quit <-chan int) <-chan Signal {
+	reportSignal := make(chan Signal)
+
 	var netClient = &http.Client{
 		Timeout: time.Second * 10,
 	}
 
-	for {
-		select {
-		case link := <-job:
-			response, err := netClient.Get(link)
-			if err != nil {
-				reportSignal <- Signal{
-					Sig: ErrorSig,
-					Err: err,
+	go func() {
+		for {
+			select {
+			case link := <-job:
+				response, err := netClient.Get(link)
+				if err != nil {
+					reportSignal <- Signal{
+						Sig: ErrorSig,
+						Err: err,
+					}
+					continue
 				}
-				continue
-			}
 
-			buf, err := ioutil.ReadAll(response.Body)
-			if err != nil {
-				reportSignal <- Signal{
-					Sig: ErrorSig,
-					Err: err,
+				buf, err := ioutil.ReadAll(response.Body)
+				if err != nil {
+					reportSignal <- Signal{
+						Sig: ErrorSig,
+						Err: err,
+					}
+					continue
 				}
-				continue
-			}
 
-			var products []product
-			err = json.Unmarshal(buf, &products)
-			if err != nil {
-				reportSignal <- Signal{
-					Sig: ErrorSig,
-					Err: err,
+				var products []Product
+				productBuf, _, _, err := jsonparser.Get(buf, "result", "data")
+				err = json.Unmarshal(productBuf, &products)
+				if err != nil {
+					reportSignal <- Signal{
+						Sig: ErrorSig,
+						Err: err,
+					}
+					continue
 				}
-				continue
+				reportSignal <- Signal{
+					Err:    nil,
+					Sig:    DoneSig,
+					Result: products,
+				}
+			case <-quit:
+				log.Infof("worker %s stop", pw.name)
+				return
 			}
-
-			log.Info(products)
-		case <-quit:
-			log.Infof("worker %s stop", pw.name)
-			return
 		}
-	}
+	}()
+
+	return reportSignal
 }
 
 // NewProductWorker create product worker

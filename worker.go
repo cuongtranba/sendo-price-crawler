@@ -11,11 +11,12 @@ const (
 
 //Signal status of worker
 type Signal struct {
-	Sig int
-	Err error
+	Sig    int
+	Err    error
+	Result interface{}
 }
 
 // Worker worker for clawers
 type Worker interface {
-	RunJob(job <-chan string, quit <-chan int, reportSignal chan<- Signal)
+	RunJob(job <-chan string, quit <-chan int) <-chan Signal
 }
