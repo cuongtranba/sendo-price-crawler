@@ -2,8 +2,6 @@ package main
 
 import (
 	"testing"
-
-	log "github.com/sirupsen/logrus"
 )
 
 func TestProductInfoWorker_RunJobFail(t *testing.T) {
@@ -84,6 +82,4 @@ func TestProductInfoWorker_RunJobDone(t *testing.T) {
 		t.Errorf("error when process api %v", result.Err)
 		return
 	}
-	res := result.Result.([]Product)
-	log.Info(res)
 }
