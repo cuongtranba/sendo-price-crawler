@@ -11,9 +11,9 @@ import (
 
 // Category Category
 type Category struct {
-	ID      int    `json:"id"`
-	URLPath string `json:"url_path"`
-	Title   string `json:"title"`
+	ID    int    `json:"id"`
+	Title string `json:"title"`
+	Image string `json:"image"`
 }
 
 // Product Product
@@ -27,6 +27,12 @@ type Product struct {
 	FinalPriceMax    int64  `json:"final_price_max"`
 	PromotionPercent int    `json:"promotion_percent"`
 	IMG              string `json:"img_url"`
+}
+
+// Page paging
+type Page struct {
+	CurrentPage int `json:"current_page"`
+	TotalPage   int `json:"total_page"`
 }
 
 // ProductInfoWorker get product info worker
@@ -54,7 +60,7 @@ func (pw *ProductInfoWorker) RunJob(job <-chan string, quit <-chan int) <-chan S
 					}
 					continue
 				}
-
+				defer response.Body.Close()
 				buf, err := ioutil.ReadAll(response.Body)
 				if err != nil {
 					reportSignal <- Signal{
