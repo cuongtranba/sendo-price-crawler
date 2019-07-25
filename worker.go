@@ -13,7 +13,7 @@ const (
 type Signal struct {
 	Sig    int
 	Err    error
-	Result interface{}
+	Result []byte
 }
 
 // Worker worker for clawers

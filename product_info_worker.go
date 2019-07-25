@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -10,11 +9,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Category Category
 type Category struct {
-	ID      string `json:"id"`
+	ID      int    `json:"id"`
 	URLPath string `json:"url_path"`
+	Title   string `json:"title"`
 }
 
+// Product Product
 type Product struct {
 	ID               int64  `json:"id"`
 	ProductID        int64  `json:"product_id"`
@@ -62,9 +64,7 @@ func (pw *ProductInfoWorker) RunJob(job <-chan string, quit <-chan int) <-chan S
 					continue
 				}
 
-				var products []Product
-				productBuf, _, _, err := jsonparser.Get(buf, "result", "data")
-				err = json.Unmarshal(productBuf, &products)
+				value, _, _, err := jsonparser.Get(buf, "result", "data")
 				if err != nil {
 					reportSignal <- Signal{
 						Sig: ErrorSig,
@@ -75,7 +75,7 @@ func (pw *ProductInfoWorker) RunJob(job <-chan string, quit <-chan int) <-chan S
 				reportSignal <- Signal{
 					Err:    nil,
 					Sig:    DoneSig,
-					Result: products,
+					Result: value,
 				}
 			case <-quit:
 				log.Infof("worker %s stop", pw.name)
