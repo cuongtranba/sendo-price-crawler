@@ -14,6 +14,7 @@ type Signal struct {
 	Sig    int
 	Err    error
 	Result []byte
+	Link   string
 }
 
 // Worker worker for clawers

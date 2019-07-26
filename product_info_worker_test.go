@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -81,5 +82,13 @@ func TestProductInfoWorker_RunJobDone(t *testing.T) {
 	if result.Err != nil {
 		t.Errorf("error when process api %v", result.Err)
 		return
+	}
+}
+
+func Test(t *testing.T) {
+	actual := fmt.Sprintf(ProductCategoryLink, 10, 1)
+	exspected := "https://www.sendo.vn/m/wap_v2/category/product?category_id=10&listing_algo=algo5&p=1&platform=wap&s=30&sortType=default_listing_desc"
+	if actual != exspected {
+		t.Errorf("actual: %s - exspected: %s", actual, exspected)
 	}
 }

@@ -55,8 +55,10 @@ func (pw *ProductInfoWorker) RunJob(job <-chan string, quit <-chan int) <-chan S
 				response, err := netClient.Get(link)
 				if err != nil {
 					reportSignal <- Signal{
-						Sig: ErrorSig,
-						Err: err,
+						Sig:    ErrorSig,
+						Err:    err,
+						Link:   link,
+						Result: nil,
 					}
 					continue
 				}
@@ -64,8 +66,10 @@ func (pw *ProductInfoWorker) RunJob(job <-chan string, quit <-chan int) <-chan S
 				buf, err := ioutil.ReadAll(response.Body)
 				if err != nil {
 					reportSignal <- Signal{
-						Sig: ErrorSig,
-						Err: err,
+						Sig:    ErrorSig,
+						Err:    err,
+						Link:   link,
+						Result: nil,
 					}
 					continue
 				}
@@ -73,8 +77,10 @@ func (pw *ProductInfoWorker) RunJob(job <-chan string, quit <-chan int) <-chan S
 				value, _, _, err := jsonparser.Get(buf, "result", "data")
 				if err != nil {
 					reportSignal <- Signal{
-						Sig: ErrorSig,
-						Err: err,
+						Sig:    ErrorSig,
+						Err:    err,
+						Link:   link,
+						Result: nil,
 					}
 					continue
 				}
@@ -82,6 +88,7 @@ func (pw *ProductInfoWorker) RunJob(job <-chan string, quit <-chan int) <-chan S
 					Err:    nil,
 					Sig:    DoneSig,
 					Result: value,
+					Link:   link,
 				}
 			case <-quit:
 				log.Infof("worker %s stop", pw.name)

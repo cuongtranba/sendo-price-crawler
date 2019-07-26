@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/influxdata/influxdb/client/v2"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -19,16 +18,16 @@ type InfluxDb struct {
 }
 
 // NewInfluxDbClient NewInfluxDbClient
-func NewInfluxDbClient(con string) *InfluxDb {
+func NewInfluxDbClient(con string) (*InfluxDb, error) {
 	c, err := client.NewHTTPClient(client.HTTPConfig{
 		Addr: os.Getenv("DB_URL"),
 	})
 	if err != nil {
-		log.Fatalln("Error: ", err)
+		return nil, err
 	}
 	return &InfluxDb{
 		client: c,
-	}
+	}, nil
 }
 
 // Insert insert product measurement

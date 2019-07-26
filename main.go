@@ -29,12 +29,18 @@ func init() {
 }
 
 func main() {
+	//create db
+	// clientDb, err := NewInfluxDbClient(os.Getenv("DB_URL"))
+	// if err != nil {
+	// 	log.Fatal("can not create connection to influx db %v", err)
+	// }
 	//create workers
 	var workers []Worker
 	job := make(chan string)
 	quit := make(chan int)
 	forever := make(chan int)
-	jobResult := make(chan chan Signal)
+	jobResult := make(chan Signal)
+
 	for i := 0; i < maxWorker; i++ {
 		workers = append(workers, NewProductWorker(strconv.Itoa(i)))
 	}
@@ -42,7 +48,7 @@ func main() {
 	go func() {
 		for _, worker := range workers {
 			res := worker.RunJob(job, quit)
-			jobResult <- res
+			jobResult <- <-res
 		}
 	}()
 
@@ -69,8 +75,22 @@ func main() {
 		log.Fatal(err)
 	}
 
-	for _, category := range categories {
-		link := fmt.Sprintf(ProductCategoryLink, category.ID, 1)
-		job <- link
-	}
+	go func() {
+		for _, category := range categories {
+			link := fmt.Sprintf(ProductCategoryLink, category.ID, 1)
+			job <- link
+		}
+	}()
+
+	go func() {
+		for {
+			result := <-jobResult
+			if result.Err != nil {
+				log.Errorf("link %s - error: %v", result.Link, result.Err)
+				continue
+			}
+			log.Infof("link: %s - done", result.Link)
+		}
+	}()
+	<-forever
 }
