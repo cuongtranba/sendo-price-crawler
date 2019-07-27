@@ -11,10 +11,11 @@ const (
 
 //Signal status of worker
 type Signal struct {
-	Sig    int
-	Err    error
-	Result []byte
-	Link   string
+	Sig        int
+	Err        error
+	Result     []byte
+	Link       string
+	WorkerName string
 }
 
 // Worker worker for clawers

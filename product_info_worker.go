@@ -52,13 +52,15 @@ func (pw *ProductInfoWorker) RunJob(job <-chan string, quit <-chan int) <-chan S
 		for {
 			select {
 			case link := <-job:
+				// log.Infof("get job: %s", link)
 				response, err := netClient.Get(link)
 				if err != nil {
 					reportSignal <- Signal{
-						Sig:    ErrorSig,
-						Err:    err,
-						Link:   link,
-						Result: nil,
+						Sig:        ErrorSig,
+						Err:        err,
+						Link:       link,
+						Result:     nil,
+						WorkerName: pw.name,
 					}
 					continue
 				}
@@ -66,10 +68,11 @@ func (pw *ProductInfoWorker) RunJob(job <-chan string, quit <-chan int) <-chan S
 				buf, err := ioutil.ReadAll(response.Body)
 				if err != nil {
 					reportSignal <- Signal{
-						Sig:    ErrorSig,
-						Err:    err,
-						Link:   link,
-						Result: nil,
+						Sig:        ErrorSig,
+						Err:        err,
+						Link:       link,
+						Result:     nil,
+						WorkerName: pw.name,
 					}
 					continue
 				}
@@ -77,18 +80,20 @@ func (pw *ProductInfoWorker) RunJob(job <-chan string, quit <-chan int) <-chan S
 				value, _, _, err := jsonparser.Get(buf, "result", "data")
 				if err != nil {
 					reportSignal <- Signal{
-						Sig:    ErrorSig,
-						Err:    err,
-						Link:   link,
-						Result: nil,
+						Sig:        ErrorSig,
+						Err:        err,
+						Link:       link,
+						Result:     nil,
+						WorkerName: pw.name,
 					}
 					continue
 				}
 				reportSignal <- Signal{
-					Err:    nil,
-					Sig:    DoneSig,
-					Result: value,
-					Link:   link,
+					Err:        nil,
+					Sig:        DoneSig,
+					Result:     value,
+					Link:       link,
+					WorkerName: pw.name,
 				}
 			case <-quit:
 				log.Infof("worker %s stop", pw.name)

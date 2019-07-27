@@ -36,7 +36,7 @@ func main() {
 	// }
 	//create workers
 	var workers []Worker
-	job := make(chan string)
+	job := make(chan string, maxWorker)
 	quit := make(chan int)
 	forever := make(chan int)
 	jobResult := make(chan Signal)
@@ -48,7 +48,11 @@ func main() {
 	go func() {
 		for _, worker := range workers {
 			res := worker.RunJob(job, quit)
-			jobResult <- <-res
+			go func() {
+				for {
+					jobResult <- <-res
+				}
+			}()
 		}
 	}()
 
@@ -75,10 +79,38 @@ func main() {
 		log.Fatal(err)
 	}
 
+	var client = &http.Client{
+		Timeout: time.Second * 10,
+	}
+
 	go func() {
 		for _, category := range categories {
-			link := fmt.Sprintf(ProductCategoryLink, category.ID, 1)
-			job <- link
+			go func(c Category) {
+				link := fmt.Sprintf(ProductCategoryLink, c.ID, 1)
+				res, err := client.Get(link)
+				if err != nil {
+					log.Errorf("link %s error: %v", link, err)
+					return
+				}
+				defer res.Body.Close()
+				buf, err := ioutil.ReadAll(res.Body)
+				pagingBuf, _, _, err := jsonparser.Get(buf, "result", "meta_data")
+				if err != nil {
+					log.Errorf("can not get paging info of %s error: %v", link, err)
+					return
+				}
+				var paging Page
+				err = json.Unmarshal(pagingBuf, &paging)
+				if err != nil {
+					log.Errorf("can not parser %v", err)
+					return
+				}
+				for p := 1; p <= paging.TotalPage; p++ {
+					linkPage := fmt.Sprintf(ProductCategoryLink, c.ID, p)
+					log.Infof("link: %s - page: %d - total: %d", linkPage, p, paging.TotalPage)
+					job <- linkPage
+				}
+			}(category)
 		}
 	}()
 
@@ -89,7 +121,8 @@ func main() {
 				log.Errorf("link %s - error: %v", result.Link, result.Err)
 				continue
 			}
-			log.Infof("link: %s - done", result.Link)
+
+			// log.Infof("worker: %s link: %s - done", result.WorkerName, result.Link)
 		}
 	}()
 	<-forever
