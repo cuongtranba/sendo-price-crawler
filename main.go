@@ -10,6 +10,9 @@ import (
 	"time"
 
 	jsonparser "github.com/buger/jsonparser"
+	"github.com/fatih/structs"
+	"github.com/influxdata/influxdb/client/v2"
+	influxClient "github.com/influxdata/influxdb/client/v2"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 )
@@ -29,12 +32,15 @@ func init() {
 }
 
 func main() {
-	//create db
-	// clientDb, err := NewInfluxDbClient(os.Getenv("DB_URL"))
-	// if err != nil {
-	// 	log.Fatal("can not create connection to influx db %v", err)
-	// }
-	//create workers
+	// create db
+	dbClient, err := client.NewHTTPClient(client.HTTPConfig{
+		Addr: os.Getenv("DB_URL"),
+	})
+	if err != nil {
+		log.Fatalf("can not connect to influxdb %v", err)
+	}
+	defer dbClient.Close()
+	// create workers
 	var workers []Worker
 	job := make(chan string, maxWorker)
 	quit := make(chan int)
@@ -114,6 +120,15 @@ func main() {
 		}
 	}()
 
+	// Create a new point batch
+	bp, err := influxClient.NewBatchPoints(influxClient.BatchPointsConfig{
+		Database: "sendo_price",
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	go func() {
 		for {
 			result := <-jobResult
@@ -121,8 +136,28 @@ func main() {
 				log.Errorf("link %s - error: %v", result.Link, result.Err)
 				continue
 			}
-
-			// log.Infof("worker: %s link: %s - done", result.WorkerName, result.Link)
+			var products []Product
+			err = json.Unmarshal(result.Result, &products)
+			if err != nil {
+				log.Errorf("can not parse products %v", err)
+				continue
+			}
+			for _, product := range products {
+				tags := map[string]string{
+					"ProductID": strconv.FormatInt(product.ID, 10),
+				}
+				pt, err := influxClient.NewPoint("products", tags, structs.Map(product), time.Now())
+				if err != nil {
+					log.Error(err)
+					continue
+				}
+				bp.AddPoint(pt)
+			}
+			if err := dbClient.Write(bp); err != nil {
+				log.Error(err)
+				continue
+			}
+			log.Infof("worker: %s link: %s - done", result.WorkerName, result.Link)
 		}
 	}()
 	<-forever
